@@ -22,6 +22,8 @@ routes
 
     .post("/continue-with-google", authController.continueWithGoogle)
     .post("/logout-customer", authController.logoutCustomer)
+    .post("/mobile-send-otp", authController.sendMobileOTP)
+    .post("/mobile-login", authController.loginMobileCustomer)
 
 
 module.exports = routes

@@ -215,3 +215,48 @@ exports.logoutCustomer = asyncHandler(async (req, res) => {
 })
 
 //Coustomer Authentication End
+
+
+exports.sendMobileOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body
+    const result = await Customer.findOne({ email })
+    if (!result) {
+        return res.status(401).json({ message: "Invalid Email or Mobile" })
+    }
+
+    const otp = genrateOTP()
+    // console.log(otp);
+
+    await Customer.findByIdAndUpdate(result._id, { otp, otpSendOn: new Date() })
+    await sendEmail({ to: result.email, subject: "Verify your login OTP", message: `Your OTP is ${otp}` })
+    res.json({ message: "Mobile otp send Success" })
+})
+
+
+exports.loginMobileCustomer = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body
+    const result = await Customer.findOne({ email })
+    if (!result) {
+        return res.status(401).json({ message: "Invalid Email or Mobile" })
+    }
+
+    if (result.otp != otp) {
+        return res.status(401).json({ message: "Invalid OTP" })
+    }
+
+    if (differenceInSeconds(new Date(), result.otpSendOn) > 60) {
+        return res.status(401).json({ message: "OTP expire" })
+    }
+
+    await Customer.findByIdAndUpdate(result._id, { otp: null })
+    const token = jwt.sign({ _id: result._id, name: result.name }, process.env.JWT_KEY)
+    res.cookie("CUSTOMER", token, { maxAge: 1000 * 60 * 60 * 24, httpOnly: true, secure: false })
+    res.json({
+        message: "Customer Login Success", result: {
+            _id: result._id,
+            name: result.name,
+            email: result.email,
+            mobile: result.mobile,
+        }
+    })
+})
